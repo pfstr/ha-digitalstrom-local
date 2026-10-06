@@ -1,6 +1,6 @@
 # digitalSTROM Local für Home Assistant (Kurzfassung)
 
-Eine kleine, lokale und ereignisgesteuerte Home-Assistant-Integration für den **digitalSTROM-Server (dSS)**, dazu Blueprints aus einer echten Wohnung.
+Eine kleine, lokale und ereignisgesteuerte Home-Assistant-Integration für den **digitalSTROM-Server (dSS)**, dazu passende Blueprints.
 
 ## Das Wichtigste
 

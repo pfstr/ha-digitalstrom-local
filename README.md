@@ -1,6 +1,6 @@
 # digitalSTROM Local for Home Assistant
 
-A small, local and event-driven Home Assistant integration for the **digitalSTROM server (dSS)**, plus a set of blueprints from a real apartment: motion lights that leave manual light alone, a shower mode, "tap four times to start music" and automatic leave/arrive by phone presence.
+A small, local and event-driven Home Assistant integration for the **digitalSTROM server (dSS)**, plus a set of blueprints: motion lights that leave manual light alone, a shower mode, "tap four times to start music" and automatic leave/arrive by phone presence.
 
 [Deutsche Kurzfassung](README.de.md)
 
@@ -79,7 +79,7 @@ You can revoke the token in the Configurator at any time.
 | [Leave / arrive by presence](blueprints/automation/digitalstrom_local/presence_leave_arrive.yaml) | Triggers Leave when everybody is gone and nobody pressed the button; Arrive plus a welcome light when someone comes home. | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fpfstr%2Fha-digitalstrom-local%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fdigitalstrom_local%2Fpresence_leave_arrive.yaml) |
 | [Sonos start](blueprints/script/digitalstrom_local/sonos_start.yaml) (script) | Joins a group that is already playing, otherwise resumes or plays a fallback station, always at the same start volume. | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fpfstr%2Fha-digitalstrom-local%2Fblob%2Fmain%2Fblueprints%2Fscript%2Fdigitalstrom_local%2Fsonos_start.yaml) |
 
-### Tips from the real apartment
+### Tips
 
 - **Four taps without flicker at the end:** in the Configurator set scene 19 (Preset 4) of every light to *do not change output*. digitalSTROM still steps through Preset 1 to 3 while you tap; the multi-tap blueprint switches the light off afterwards.
 - **Pause music and switch off other lights on Leave:** a plain automation on `digitalstrom_local_event` with `type: absent` that calls `media_player.media_pause` and `light.turn_off` for lights of other integrations (e.g. `{{ integration_entities('hue') | select('match', 'light\.') | list }}`). digitalSTROM switches its own lights off by itself.
@@ -90,7 +90,7 @@ You can revoke the token in the Configurator at any time.
 - After a zone scene the dSS does not report brightness, so the light shows full brightness until you set a value from Home Assistant.
 - Blind positions are read from the bus about a minute after a move and every 15 minutes, not continuously.
 - Only zone lights, blinds, joker outputs, motion states and apartment scenes are covered. No heating, no per-device lights, no sensors of individual terminal blocks.
-- Tested in one apartment with one dSS. Feedback and pull requests are welcome.
+- Tested with a single dSS installation. Feedback and pull requests are welcome.
 
 ## Disclaimer
 
