@@ -149,7 +149,10 @@ class DssCoordinator:
             states[s["name"]] = str(s.get("state") or s.get("value"))
         self.data.states = states
         cons = await self.api.call("apartment/getConsumption")
-        self.data.consumption = int(cons.get("consumption", 0))
+        value = int(cons.get("consumption", 0))
+        # The dSS reports 0 W briefly after a restart; a whole apartment never draws exactly 0 W
+        if value > 0 or self.data.consumption is None:
+            self.data.consumption = value
 
     async def _poll_bus(self) -> None:
         """Read output values directly from the terminal blocks. Keep this rare: every read loads the dS485 bus."""
