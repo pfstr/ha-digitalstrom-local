@@ -1,0 +1,61 @@
+blueprint:
+  name: digitalSTROM multi-tap action (e.g. four taps start music)
+  description: >
+    Runs your own actions when a digitalSTROM light button is tapped several times in a room
+    (four taps = scene 19 by default). Optionally switches the room light off again, because
+    digitalSTROM steps through Preset 1 to 3 while you tap.
+    Tip: set scene 19 of all lights to "do not change output" in the dSS Configurator, so the
+    last tap does not change the light.
+    Your actions can use the variables "zone_name" and "zone" (id) of the room that was tapped.
+  domain: automation
+  source_url: https://github.com/pfstr/ha-digitalstrom-local/blob/main/blueprints/automation/digitalstrom_local/multi_tap_action.yaml
+  input:
+    scene:
+      name: Scene
+      description: 17 = double tap, 18 = triple tap, 19 = four taps.
+      default: 19
+      selector:
+        number:
+          min: 0
+          max: 63
+          mode: box
+    light_off:
+      name: Switch the room light off afterwards
+      default: true
+      selector:
+        boolean:
+    tap_actions:
+      name: Actions
+      description: For example the "Sonos start" script blueprint from this repository.
+      selector:
+        action:
+
+mode: queued
+
+variables:
+  light_off: !input light_off
+
+triggers:
+  - trigger: event
+    event_type: digitalstrom_local_event
+    event_data:
+      type: zone_scene
+      group: 1
+      scene: !input scene
+
+actions:
+  - variables:
+      zone_name: "{{ trigger.event.data.zone_name }}"
+      zone: "{{ trigger.event.data.zone }}"
+      zone_lights: >-
+        {{ integration_entities('digitalstrom_local') | select('match', 'light\.')
+           | select('in', area_entities(zone_name)) | list }}
+  - if:
+      - condition: template
+        value_template: "{{ light_off and zone_lights | count > 0 }}"
+    then:
+      - action: light.turn_off
+        target:
+          entity_id: "{{ zone_lights }}"
+  - choose: []
+    default: !input tap_actions

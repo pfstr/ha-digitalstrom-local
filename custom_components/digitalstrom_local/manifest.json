@@ -1,0 +1,13 @@
+{
+  "domain": "digitalstrom_local",
+  "name": "digitalSTROM Local",
+  "codeowners": ["@pfstr"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/pfstr/ha-digitalstrom-local",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/pfstr/ha-digitalstrom-local/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

@@ -1,0 +1,126 @@
+blueprint:
+  name: digitalSTROM leave / arrive by phone presence
+  description: >
+    Safety net for the digitalSTROM "Leave" (absent) button: when all selected persons have
+    left home and nobody pressed "Leave", it is triggered automatically. When someone comes
+    home, "Arrive" (present) is triggered and, if it is dark, a welcome light is switched on.
+    Works with any presence source, e.g. the FRITZ!Box Tools integration. With iPhones set
+    "Private Wi-Fi Address" to "Fixed" for your home network and use a consider-home time of
+    about 10 minutes, otherwise a sleeping phone looks like "away".
+  domain: automation
+  source_url: https://github.com/pfstr/ha-digitalstrom-local/blob/main/blueprints/automation/digitalstrom_local/presence_leave_arrive.yaml
+  input:
+    persons:
+      name: Persons
+      selector:
+        entity:
+          domain: person
+          multiple: true
+    presence_sensor:
+      name: digitalSTROM "Present" sensor
+      selector:
+        entity:
+          domain: binary_sensor
+          integration: digitalstrom_local
+    leave_button:
+      name: digitalSTROM "Leave" button
+      selector:
+        entity:
+          domain: button
+          integration: digitalstrom_local
+    arrive_button:
+      name: digitalSTROM "Arrive" button
+      selector:
+        entity:
+          domain: button
+          integration: digitalstrom_local
+    welcome_light:
+      name: Welcome light (optional)
+      default: ""
+      selector:
+        entity:
+          domain: light
+    lux_sensor:
+      name: Illuminance sensor for the welcome light (optional)
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+          device_class: illuminance
+    lux_threshold:
+      name: Welcome light only below (lx)
+      default: 20
+      selector:
+        number:
+          min: 0
+          max: 2000
+          unit_of_measurement: lx
+    welcome_owner_helper:
+      name: Motion light helper of the welcome light (optional)
+      description: If set, the motion light blueprint switches the welcome light off again.
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+mode: queued
+
+variables:
+  persons: !input persons
+  presence_sensor: !input presence_sensor
+  welcome_light: !input welcome_light
+  lux_sensor: !input lux_sensor
+  lux_threshold: !input lux_threshold
+  welcome_owner_helper: !input welcome_owner_helper
+
+triggers:
+  - trigger: state
+    entity_id: !input persons
+    from: home
+    id: left
+  - trigger: state
+    entity_id: !input persons
+    to: home
+    id: arrived
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: left
+          - condition: template
+            value_template: "{{ persons | select('is_state', 'home') | list | count == 0 }}"
+          - condition: state
+            entity_id: !input presence_sensor
+            state: "on"
+        sequence:
+          - action: button.press
+            target:
+              entity_id: !input leave_button
+      - conditions:
+          - condition: trigger
+            id: arrived
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ is_state(presence_sensor, 'off') }}"
+            then:
+              - action: button.press
+                target:
+                  entity_id: !input arrive_button
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ welcome_light != '' and is_state(welcome_light, 'off')
+                     and (lux_sensor == '' or states(lux_sensor) | float(0) < lux_threshold | float(0)) }}
+            then:
+              - action: light.turn_on
+                target:
+                  entity_id: "{{ welcome_light }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ welcome_owner_helper != '' }}"
+                then:
+                  - action: input_boolean.turn_on
+                    target:
+                      entity_id: "{{ welcome_owner_helper }}"

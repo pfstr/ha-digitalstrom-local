@@ -1,0 +1,174 @@
+blueprint:
+  name: Motion light (leaves manual light alone, restart-safe)
+  description: >
+    Turns a light on when motion is detected and off again after a delay without motion.
+    A light that was switched on by hand (wall button, app) is never switched off by this
+    automation: a helper remembers whether the automation turned the light on.
+    A check every minute makes sure the light still goes off after a Home Assistant restart.
+    Optional: only when it is dark, only within a time window, dimmed at night, and a
+    "block" helper (e.g. a shower mode) that keeps the light on.
+  domain: automation
+  source_url: https://github.com/pfstr/ha-digitalstrom-local/blob/main/blueprints/automation/digitalstrom_local/motion_light.yaml
+  input:
+    motion_sensor:
+      name: Motion sensor
+      selector:
+        entity:
+          domain: binary_sensor
+    light_target:
+      name: Light
+      selector:
+        entity:
+          domain: light
+    owner_helper:
+      name: Helper "switched on by automation"
+      description: Create a toggle helper (input_boolean) per room, e.g. "Motion light bathroom active".
+      selector:
+        entity:
+          domain: input_boolean
+    off_delay:
+      name: Switch off after no motion for
+      default:
+        minutes: 2
+      selector:
+        duration:
+    lux_sensor:
+      name: Illuminance sensor (optional)
+      description: Leave empty to switch on regardless of daylight.
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+          device_class: illuminance
+    lux_threshold:
+      name: Only switch on below (lx)
+      default: 20
+      selector:
+        number:
+          min: 0
+          max: 2000
+          unit_of_measurement: lx
+    time_after:
+      name: Active from
+      description: Set "Active from" and "Active until" to the same time to be active all day.
+      default: "00:00:00"
+      selector:
+        time:
+    time_before:
+      name: Active until
+      default: "00:00:00"
+      selector:
+        time:
+    night_start:
+      name: Night mode from
+      default: "23:00:00"
+      selector:
+        time:
+    night_end:
+      name: Night mode until
+      default: "06:00:00"
+      selector:
+        time:
+    night_brightness:
+      name: Night brightness
+      description: 0 disables night mode. Ignored by lights that can only switch on/off.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+    block_helper:
+      name: Keep on while this helper is on (optional)
+      description: For example the helper of the shower mode blueprint.
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+mode: queued
+
+variables:
+  light_target: !input light_target
+  lux_sensor: !input lux_sensor
+  lux_threshold: !input lux_threshold
+  time_after: !input time_after
+  time_before: !input time_before
+  night_start: !input night_start
+  night_end: !input night_end
+  night_brightness: !input night_brightness
+  block_helper: !input block_helper
+
+triggers:
+  - trigger: state
+    entity_id: !input motion_sensor
+    to: "on"
+    id: motion
+  - trigger: state
+    entity_id: !input motion_sensor
+    to: "off"
+    for: !input off_delay
+    id: quiet
+  - trigger: time_pattern
+    minutes: "/1"
+    id: check
+
+actions:
+  - variables:
+      now_s: "{{ now().strftime('%H:%M:%S') }}"
+      in_window: >-
+        {% if time_after == time_before %}true
+        {% elif time_after < time_before %}{{ time_after <= now_s < time_before }}
+        {% else %}{{ now_s >= time_after or now_s < time_before }}{% endif %}
+      is_night: >-
+        {% if night_start < night_end %}{{ night_start <= now_s < night_end }}
+        {% else %}{{ now_s >= night_start or now_s < night_end }}{% endif %}
+      dark_enough: "{{ lux_sensor == '' or states(lux_sensor) | float(0) < lux_threshold | float(0) }}"
+      blocked: "{{ block_helper != '' and is_state(block_helper, 'on') }}"
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: motion
+          - condition: state
+            entity_id: !input light_target
+            state: "off"
+          - condition: template
+            value_template: "{{ in_window and dark_enough }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ is_night and night_brightness | int(0) > 0 }}"
+            then:
+              - action: light.turn_on
+                target:
+                  entity_id: !input light_target
+                data:
+                  brightness_pct: "{{ night_brightness | int }}"
+            else:
+              - action: light.turn_on
+                target:
+                  entity_id: !input light_target
+          - action: input_boolean.turn_on
+            target:
+              entity_id: !input owner_helper
+      - conditions:
+          - condition: trigger
+            id:
+              - quiet
+              - check
+          - condition: state
+            entity_id: !input owner_helper
+            state: "on"
+          - condition: state
+            entity_id: !input motion_sensor
+            state: "off"
+            for: !input off_delay
+          - condition: template
+            value_template: "{{ not blocked }}"
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id: !input light_target
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input owner_helper

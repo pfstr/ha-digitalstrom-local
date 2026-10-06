@@ -1,0 +1,113 @@
+blueprint:
+  name: digitalSTROM shower mode (double tap keeps the light on)
+  description: >
+    Motion sensors cannot see you behind a shower curtain, so the light goes off while you
+    shower. With this blueprint a double tap on the bathroom light button (digitalSTROM
+    "Preset 2", scene 17) switches a shower mode helper on. Use that helper as
+    "Keep on while this helper is on" in the motion light blueprint.
+    Motion during a grace period (getting undressed, stepping into the shower) is ignored.
+    The first motion after the grace period (stepping out) ends the shower mode.
+    A maximum duration ends it in any case.
+  domain: automation
+  source_url: https://github.com/pfstr/ha-digitalstrom-local/blob/main/blueprints/automation/digitalstrom_local/shower_mode.yaml
+  input:
+    zone_name:
+      name: digitalSTROM zone (room) name
+      description: Exactly as named in the dSS Configurator, e.g. "Bad" or "Bathroom".
+      selector:
+        text:
+    scene:
+      name: Scene that starts the shower mode
+      description: 17 = double tap (Preset 2), 18 = triple tap, 19 = four taps.
+      default: 17
+      selector:
+        number:
+          min: 0
+          max: 63
+          mode: box
+    motion_sensor:
+      name: Motion sensor in the bathroom
+      selector:
+        entity:
+          domain: binary_sensor
+    shower_helper:
+      name: Shower mode helper
+      description: Create a toggle helper (input_boolean), e.g. "Shower mode bathroom".
+      selector:
+        entity:
+          domain: input_boolean
+    owner_helper:
+      name: Helper of the motion light (optional)
+      description: >
+        If set, it is switched on together with the shower mode, so the motion light
+        switches the light off again after the shower.
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+    grace:
+      name: Ignore motion for
+      default:
+        minutes: 2
+      selector:
+        duration:
+    max_duration:
+      name: End shower mode after at most
+      default:
+        minutes: 60
+      selector:
+        duration:
+
+mode: queued
+
+variables:
+  owner_helper: !input owner_helper
+
+triggers:
+  - trigger: event
+    event_type: digitalstrom_local_event
+    event_data:
+      type: zone_scene
+      zone_name: !input zone_name
+      group: 1
+      scene: !input scene
+    id: start
+  - trigger: state
+    entity_id: !input motion_sensor
+    to: "on"
+    id: motion
+  - trigger: state
+    entity_id: !input shower_helper
+    to: "on"
+    for: !input max_duration
+    id: timeout
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: start
+        sequence:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: !input shower_helper
+          - if:
+              - condition: template
+                value_template: "{{ owner_helper != '' }}"
+            then:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: "{{ owner_helper }}"
+      - conditions:
+          - condition: trigger
+            id:
+              - motion
+              - timeout
+          - condition: state
+            entity_id: !input shower_helper
+            state: "on"
+            for: !input grace
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input shower_helper

@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "digitalSTROM-Server",
+        "description": "Adresse des digitalSTROM-Servers (dSS) im lokalen Netz.",
+        "data": {
+          "host": "Adresse",
+          "port": "Port"
+        }
+      },
+      "approve": {
+        "title": "Zugang freigeben",
+        "description": "Der Server hat den App-Zugang \"{app}\" angelegt. Öffne den Configurator ({url}), gib ihn unter System > Zugriffsberechtigung frei, klicke auf Übernehmen und sende dann dieses Formular ab."
+      }
+    },
+    "error": {
+      "cannot_connect": "Server nicht erreichbar.",
+      "not_approved": "Anmeldung fehlgeschlagen. Ist der Zugang im Configurator freigegeben und übernommen?"
+    },
+    "abort": {
+      "already_configured": "Dieser Server ist bereits eingerichtet."
+    }
+  },
+  "entity": {
+    "light": {
+      "zone_light": {
+        "name": "Licht"
+      }
+    },
+    "binary_sensor": {
+      "presence": {
+        "name": "Anwesend"
+      },
+      "wind": {
+        "name": "Windalarm"
+      },
+      "motion": {
+        "name": "Bewegung"
+      }
+    },
+    "sensor": {
+      "consumption": {
+        "name": "Verbrauch"
+      }
+    },
+    "button": {
+      "absent": {
+        "name": "Gehen"
+      },
+      "present": {
+        "name": "Kommen"
+      }
+    }
+  }
+}

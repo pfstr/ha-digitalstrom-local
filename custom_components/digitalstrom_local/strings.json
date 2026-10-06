@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "digitalSTROM server",
+        "description": "Address of your digitalSTROM server (dSS) on the local network.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "approve": {
+        "title": "Approve access",
+        "description": "The dSS created the app token \"{app}\". Open the Configurator ({url}), approve it under System > Access Authorization, click Apply, then submit."
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot reach the server.",
+      "not_approved": "Login failed. Is the token approved and applied in the Configurator?"
+    },
+    "abort": {
+      "already_configured": "This server is already configured."
+    }
+  },
+  "entity": {
+    "light": {
+      "zone_light": {
+        "name": "Light"
+      }
+    },
+    "binary_sensor": {
+      "presence": {
+        "name": "Present"
+      },
+      "wind": {
+        "name": "Wind alarm"
+      },
+      "motion": {
+        "name": "Motion"
+      }
+    },
+    "sensor": {
+      "consumption": {
+        "name": "Power consumption"
+      }
+    },
+    "button": {
+      "absent": {
+        "name": "Leave (absent)"
+      },
+      "present": {
+        "name": "Arrive (present)"
+      }
+    }
+  }
+}

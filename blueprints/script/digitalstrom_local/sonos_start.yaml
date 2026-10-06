@@ -1,0 +1,106 @@
+blueprint:
+  name: Sonos start (join running group, otherwise resume or play a fallback)
+  description: >
+    Starts music on one or more Sonos speakers at a pleasant start volume.
+    If any of your speakers is already playing, the requested speakers join that group, so
+    everything stays in sync and the running music is not interrupted.
+    Otherwise a single speaker resumes what was paused, or plays the fallback (e.g. a radio
+    station); several speakers are grouped and play the fallback together.
+    Call it with the field "speakers", for example from the multi-tap blueprint.
+  domain: script
+  source_url: https://github.com/pfstr/ha-digitalstrom-local/blob/main/blueprints/script/digitalstrom_local/sonos_start.yaml
+  input:
+    all_speakers:
+      name: All Sonos speakers
+      description: Used to find a group that is already playing.
+      selector:
+        entity:
+          domain: media_player
+          multiple: true
+    fallback_media:
+      name: Fallback media
+      description: >
+        media_content_id to play when nothing can be resumed, e.g. a Radio Browser station
+        "media-source://radio_browser/<station uuid>".
+      selector:
+        text:
+    start_volume:
+      name: Start volume
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+mode: queued
+
+fields:
+  speakers:
+    name: Speakers
+    required: true
+    selector:
+      entity:
+        domain: media_player
+        multiple: true
+
+variables:
+  all_speakers: !input all_speakers
+  fallback_media: !input fallback_media
+  start_volume: !input start_volume
+  targets: "{{ [speakers] if speakers is string else speakers }}"
+  leader: >-
+    {% set ns = namespace(l=none) %}
+    {% for p in all_speakers if ns.l is none and is_state(p, 'playing') %}
+      {% set ns.l = (state_attr(p, 'group_members') or [p])[0] %}
+    {% endfor %}
+    {{ ns.l }}
+  new_members: >-
+    {{ targets | reject('in', state_attr(leader, 'group_members') or []) | list if leader else targets }}
+
+sequence:
+  - action: media_player.volume_set
+    continue_on_error: true
+    target:
+      entity_id: "{{ targets }}"
+    data:
+      volume_level: "{{ start_volume | float(10) / 100 }}"
+  - choose:
+      - alias: Something is playing, join that group
+        conditions: "{{ leader is not none }}"
+        sequence:
+          - if: "{{ new_members | count > 0 }}"
+            then:
+              - action: media_player.join
+                target:
+                  entity_id: "{{ leader }}"
+                data:
+                  group_members: "{{ new_members }}"
+      - alias: Several speakers, nothing playing, play the fallback together
+        conditions: "{{ targets | count > 1 }}"
+        sequence:
+          - action: media_player.join
+            continue_on_error: true
+            target:
+              entity_id: "{{ targets[0] }}"
+            data:
+              group_members: "{{ targets[1:] }}"
+          - action: media_player.play_media
+            target:
+              entity_id: "{{ targets[0] }}"
+            data:
+              media_content_id: "{{ fallback_media }}"
+              media_content_type: music
+    default:
+      - if: "{{ is_state(targets[0], 'paused') and state_attr(targets[0], 'media_title') }}"
+        then:
+          - action: media_player.media_play
+            target:
+              entity_id: "{{ targets[0] }}"
+        else:
+          - action: media_player.play_media
+            target:
+              entity_id: "{{ targets[0] }}"
+            data:
+              media_content_id: "{{ fallback_media }}"
+              media_content_type: music
