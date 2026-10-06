@@ -1,0 +1,105 @@
+blueprint:
+  name: Leave room (switch off as soon as you step out)
+  description: >
+    Switches a room light off right after you leave, instead of waiting for the motion
+    light delay. Trigger is a motion sensor outside the room (e.g. the hallway). The room
+    light goes off only if the room sensor saw motion just before (you are coming from
+    that room) and the room stays quiet afterwards. Works only for light that the motion
+    light blueprint switched on, never while a "keep on" helper (e.g. shower mode) is on,
+    and only if at most the configured number of persons is at home, so nobody is left
+    in the dark. Create one automation per room.
+  domain: automation
+  source_url: https://github.com/pfstr/ha-digitalstrom-local/blob/main/blueprints/automation/digitalstrom_local/leave_room.yaml
+  input:
+    outside_motion:
+      name: Motion sensor outside the room (e.g. hallway)
+      selector:
+        entity:
+          domain: binary_sensor
+    room_motion:
+      name: Motion sensor in the room
+      selector:
+        entity:
+          domain: binary_sensor
+    room_light:
+      name: Room light
+      selector:
+        entity:
+          domain: light
+    owner_helper:
+      name: Helper "switched on by automation"
+      description: The same helper as in the motion light blueprint for this room.
+      selector:
+        entity:
+          domain: input_boolean
+    block_helper:
+      name: Keep on while this helper is on (optional)
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+    recent_seconds:
+      name: Room motion must be at most this old
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 120
+          unit_of_measurement: s
+    quiet_seconds:
+      name: Room must stay quiet for
+      description: Counted after the room sensor reports "clear" (Hue sensors report clear about 10 s after the last motion).
+      default: 3
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: s
+    max_persons:
+      name: Only when at most this many persons are home
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
+
+mode: restart
+
+variables:
+  room_motion: !input room_motion
+  room_light: !input room_light
+  owner_helper: !input owner_helper
+  block_helper: !input block_helper
+  recent_seconds: !input recent_seconds
+  quiet_seconds: !input quiet_seconds
+  max_persons: !input max_persons
+
+triggers:
+  - trigger: state
+    entity_id: !input outside_motion
+    to: "on"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ states.person | selectattr('state', 'eq', 'home') | list | count <= max_persons | int(1)
+         and is_state(room_light, 'on') and is_state(owner_helper, 'on')
+         and (block_helper == '' or is_state(block_helper, 'off'))
+         and (is_state(room_motion, 'on')
+              or (now() - states[room_motion].last_changed).total_seconds() < recent_seconds | float(30)) }}
+
+actions:
+  - wait_template: "{{ is_state(room_motion, 'off') }}"
+    timeout: "00:00:25"
+    continue_on_timeout: false
+  - delay:
+      seconds: "{{ quiet_seconds | int(3) }}"
+  - condition: template
+    value_template: "{{ is_state(room_motion, 'off') and (block_helper == '' or is_state(block_helper, 'off')) }}"
+  - action: light.turn_off
+    target:
+      entity_id: !input room_light
+  - action: input_boolean.turn_off
+    target:
+      entity_id: !input owner_helper

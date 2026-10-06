@@ -54,7 +54,7 @@ blueprint:
     max_duration:
       name: End shower mode after at most
       default:
-        minutes: 60
+        minutes: 20
       selector:
         duration:
 

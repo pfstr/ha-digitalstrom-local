@@ -20,6 +20,7 @@ Eine kleine, lokale und ereignisgesteuerte Home-Assistant-Integration für den *
 ## Blueprints
 
 - **Bewegungslicht:** lässt von Hand eingeschaltetes Licht in Ruhe, übersteht Neustarts, optional mit Dunkelheitsschwelle, Zeitfenster und Nachthelligkeit
+- **Raum verlassen:** schaltet das Licht wenige Sekunden nach dem Hinaustreten in den Gang aus, wenn sonst niemand zu Hause ist
 - **Duschmodus:** 2× Tippen hält das Badlicht an, die erste Bewegung nach einer Schonfrist beendet ihn
 - **Mehrfach-Tippen:** zum Beispiel startet 4× Tippen die Musik im Raum
 - **Gehen und Kommen per Handy-Anwesenheit**
