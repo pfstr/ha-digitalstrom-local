@@ -1,5 +1,10 @@
 {
   "name": "digitalSTROM Local",
   "render_readme": true,
-  "homeassistant": "2024.10.0"
+  "homeassistant": "2024.10.0",
+  "country": [
+    "CH",
+    "DE",
+    "AT"
+  ]
 }
